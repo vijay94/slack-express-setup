@@ -2,9 +2,7 @@ const createError = require('http-errors');
 const express = require('express');
 const dotenv = require('dotenv');
 const dotenvExpand = require('dotenv-expand');
-const cookieParser = require('cookie-parser');
 const logger = require('morgan');
-const bodyParser = require('body-parser');
 const { App, ExpressReceiver } = require('@slack/bolt');
 const mongoose = require('mongoose');
 
@@ -28,7 +26,8 @@ class ExpressApp {
   }
 
   initDB() {
-    mongoose.connect('mongodb://localhost:27017/sample', {useNewUrlParser: true, useUnifiedTopology: true});
+    const connectionUrl = `mongodb://${process.env.MONGO_DB_USER}:${process.env.MONGO_DB_PASSWORD}@${process.env.MONGO_DB_HOST}:${process.env.MONGO_DB_PORT}/${process.env.MONGO_DB_NAME}`;
+    mongoose.connect(connectionUrl, {useNewUrlParser: true, authSource: "admin", useUnifiedTopology: true});
   }
 
   initSlackReceivers() {
@@ -45,8 +44,8 @@ class ExpressApp {
   initMiddlewares() {
     this.express.use(logger(':date[iso] ":method :url HTTP/:http-version" :status :response-time ms ":referrer" ":user-agent"'));
     this.express.use(cookieParser());
-    this.express.use(bodyParser.json());
-    this.express.use(bodyParser.urlencoded({ extended: false }));
+    this.express.use(express.json());
+    app.use(express.urlencoded());
   }
 
   registerRouters() {
