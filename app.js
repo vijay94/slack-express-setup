@@ -7,7 +7,7 @@ const { App, ExpressReceiver } = require('@slack/bolt');
 const mongoose = require('mongoose');
 
 const { HelloWorldRouter } = require('./Routes');
-const EventHanlder = require('./EventHandler');
+const SlackHandler = require('./SlackHandler');
 
 class ExpressApp {
 
@@ -26,7 +26,7 @@ class ExpressApp {
   }
 
   initDB() {
-    const connectionUrl = `mongodb://${process.env.MONGO_DB_USER}:${process.env.MONGO_DB_PASSWORD}@${process.env.MONGO_DB_HOST}:${process.env.MONGO_DB_PORT}/${process.env.MONGO_DB_NAME}`;
+    const connectionUrl = `mongodb://${process.env.MONGO_DB_HOST}:${process.env.MONGO_DB_PORT}/${process.env.MONGO_DB_NAME}`;
     mongoose.connect(connectionUrl, {useNewUrlParser: true, authSource: "admin", useUnifiedTopology: true});
   }
 
@@ -37,15 +37,17 @@ class ExpressApp {
       signingSecret: process.env.SLACK_SIGNING_SECRET,
       receiver
     });
-    new EventHanlder(boltApp).registerEvents();
+
+    const slackHandler = new SlackHandler(boltApp);
+    slackHandler.registerEvents();
+    slackHandler.registerCommands();
     this.express.use('/', receiver.router);
   }
 
   initMiddlewares() {
     this.express.use(logger(':date[iso] ":method :url HTTP/:http-version" :status :response-time ms ":referrer" ":user-agent"'));
-    this.express.use(cookieParser());
     this.express.use(express.json());
-    app.use(express.urlencoded());
+    this.express.use(express.urlencoded({ extended: true }));
   }
 
   registerRouters() {
@@ -60,7 +62,7 @@ class ExpressApp {
     });
 
     this.express.use((err, req, res, next) => {
-      return res.status(500).send({ status: 500, message: "Internal Server Error" });
+      return res.status(500).send({ message: err.message || "Internal Server Error" });
     });
   }
 }
